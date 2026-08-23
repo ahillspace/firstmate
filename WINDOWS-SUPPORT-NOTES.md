@@ -24,3 +24,8 @@
 - Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
 - Validation: `node` parsed `docs/documentation-audiences.json` and confirmed the Windows setup target and surface classification.
 - Validation blocked: `bin/fm-doc-audience-check.sh` requires unavailable Python 3, and `bash bin/fm-lint.sh` requires unavailable ShellCheck 0.11.0.
+- Repeated validation confirms ShellCheck 0.11.0 remains unavailable on `PATH` after more than two iterations.
+- Recorded the blocker in `BLOCKERS.md` and moved on to delivery prerequisites.
+- Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
+- Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
+- Validation: `git diff --check` passed.
