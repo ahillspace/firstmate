@@ -7,3 +7,9 @@
 - Missing Git Bash now produces a failed watcher status instead of attempting a bare Windows `bash` executable.
 - Validation: `node --check .opencode/plugins/fm-primary-watch-arm.js` passed.
 - Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
+- Made OpenCode harness detection case-insensitive for Windows process names and interpreter arguments.
+- Added a portable MSYS regression through `tests/fm-supervision-instructions.test.sh` using a simulated `OpenCode.exe` process listing.
+- Validation: `bash tests/fm-supervision-instructions.test.sh` passed with 10 ok lines.
+- Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
+- Validation: `bash -n bin/fm-harness.sh tests/fm-supervision-instructions.test.sh` and `git diff --check` passed.
+- Validation: `bash bin/fm-lint.sh` is pending because ShellCheck 0.11.0 is not installed.

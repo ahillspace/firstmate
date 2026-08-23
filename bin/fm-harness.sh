@@ -73,15 +73,16 @@ detect_own() {
   # without verifying it reaches children AND that it cannot survive in a
   # multiplexer's stored environment, which is the precedence hazard above.
   # Layer 2: walk the parent chain and match the command name.
-  local pid=$$ comm args argv0
+  local pid=$$ comm comm_lc args args_lc argv0
   for _ in 1 2 3 4 5 6 7 8; do
     comm=$(ps -o comm= -p "$pid" 2>/dev/null) || break
+    comm_lc=$(printf '%s' "$comm" | tr '[:upper:]' '[:lower:]')
     argv0=$(fm_cursor_argv0_for_pid "$pid" "$comm" 2>/dev/null || true)
     if fm_cursor_process_matches "$comm" '' "$argv0"; then
       echo cursor
       return
     fi
-    case "$(basename -- "$comm")" in
+    case "$(basename -- "$comm_lc")" in
       *claude*) echo claude; return ;;
       *codex*) echo codex; return ;;
       *opencode*) echo opencode; return ;;
@@ -98,7 +99,8 @@ detect_own() {
       node*|python*)
         # Bare interpreter: match the harness name in its script path.
         args=$(ps -o args= -p "$pid" 2>/dev/null)
-        case "$args" in
+        args_lc=$(printf '%s' "$args" | tr '[:upper:]' '[:lower:]')
+        case "$args_lc" in
           *claude*) echo claude; return ;;
           *codex*) echo codex; return ;;
           *opencode*) echo opencode; return ;;

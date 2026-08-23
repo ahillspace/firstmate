@@ -27,6 +27,20 @@ test_unknown_fallback() {
   pass "renderer falls back to unknown.md for unverified harness names"
 }
 
+test_opencode_detected_from_msys_case_variant() {
+  local fakebin out
+  fakebin="$TMP_ROOT/msys-fakebin"
+  mkdir -p "$fakebin"
+  printf '%s\n' '#!/usr/bin/env bash' 'case " $* " in' '  *" -o comm="*) printf "OpenCode.exe\\n" ;;' '  *" -o ppid="*) printf "1\\n" ;;' '  *) exit 1 ;;' 'esac' > "$fakebin/ps"
+  chmod +x "$fakebin/ps"
+  out=$(PATH="$fakebin:$PATH" MSYSTEM=MINGW64 "$RENDER")
+  assert_contains "$out" "SUPERVISION OPERATING INSTRUCTIONS - primary harness: opencode" \
+    "case-variant OpenCode process was not detected on MSYS"
+  assert_contains "$out" "OpenCode TUI plugin already owns watcher continuity" \
+    "detected OpenCode supervision protocol was not rendered"
+  pass "fm-harness detects case-variant OpenCode process names on MSYS"
+}
+
 test_conditional_stanzas() {
   local home config out
   home="$TMP_ROOT/conditional-home"
@@ -178,6 +192,7 @@ test_pi_snippet_uses_effective_extension_path() {
 
 test_selected_harness_block_only
 test_unknown_fallback
+test_opencode_detected_from_msys_case_variant
 test_conditional_stanzas
 test_repair_lines
 test_cross_harness_ordinary_continuation_and_repair_matrix
