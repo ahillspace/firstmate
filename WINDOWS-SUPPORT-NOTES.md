@@ -182,3 +182,13 @@
 - Validation blocked: `bash bin/fm-lint.sh` stopped before analysis because ShellCheck 0.11.0 is unavailable on `PATH`.
 - Documentation validation blocked: `bash bin/fm-doc-audience-check.sh` could not run because Python is unavailable on this host.
 - The branch is clean and synchronized with `origin/windows-support`; `WINDOWS-SUPPORT-PR.txt` remains absent, so the stop condition is not met.
+
+## 2026-08-23 iteration 60
+
+- Revalidated the Windows-support delivery gates after session-start reconciliation.
+- Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
+- Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
+- Validation: `bash tests/fm-supervision-instructions.test.sh` passed, including MSYS OpenCode detection.
+- Validation: `docs/windows.md` contains `Install`, `Runtime backend`, and `Known limits`, and `README.md` links the guide.
+- Validation blocked: `bash bin/fm-lint.sh` stopped before analysis because ShellCheck 0.11.0 is unavailable on `PATH`.
+- `WINDOWS-SUPPORT-PR.txt` remains absent, so the stop condition is not met.
