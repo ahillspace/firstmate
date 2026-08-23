@@ -132,6 +132,7 @@ fm_win32_process_row() {  # <windows-pid>
   case "$pid" in
     ''|*[!0-9]*) return 1 ;;
   esac
+  # shellcheck disable=SC2016 # PowerShell command must not be expanded by bash
   FM_WINPID_ROW="$pid" powershell.exe -NoProfile -NonInteractive -Command '
     $ErrorActionPreference = "SilentlyContinue"
     $p = $null
@@ -158,6 +159,7 @@ fm_win32_process_rec() {  # <windows-pid>
   case "$pid" in
     ''|*[!0-9]*) return 1 ;;
   esac
+# shellcheck disable=SC2016 # PowerShell command must not be expanded by bash
   FM_WINPID_REC="$pid" powershell.exe -NoProfile -NonInteractive -Command '
     $ErrorActionPreference = "SilentlyContinue"
     $p = $null
@@ -181,10 +183,11 @@ fm_win32_process_rec() {  # <windows-pid>
 # MSYS pid translation (whose /proc/self/winpid can disagree with the real
 # Windows table).
 fm_harness_win32_walk() {
-  local cur rec pid parent comm args depth=0
+  local rec pid parent comm args depth=0
   # Live per-hop climb. Short-lived shell intermediaries exit before their
   # child-reported pids can be queried again, so the chain may die at hop
   # zero; the snapshot scan below covers exactly that case.
+# shellcheck disable=SC2016 # PowerShell command must not be expanded by bash
   pid=$(powershell.exe -NoProfile -NonInteractive -Command '
     $ErrorActionPreference = "SilentlyContinue"
     $self = Get-CimInstance Win32_Process -Filter ("ProcessId=" + [string]$PID) -Property ParentProcessId
@@ -207,6 +210,7 @@ fm_harness_win32_walk() {
   # WMI enumerations may serve a slightly stale snapshot but long-lived
   # primary sessions are always present; emitting the oldest candidates lets
   # the caller's contiguous-run matcher claim the true session owner.
+# shellcheck disable=SC2016 # PowerShell command must not be expanded by bash
   powershell.exe -NoProfile -NonInteractive -Command '
     $ErrorActionPreference = "SilentlyContinue"
     $rows = Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId,Name,CommandLine,CreationDate

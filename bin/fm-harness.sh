@@ -30,7 +30,57 @@ CONFIG="${FM_CONFIG_OVERRIDE:-$FM_HOME/config}"
 # shellcheck source=bin/fm-cursor-lib.sh
 . "$SCRIPT_DIR/fm-cursor-lib.sh"
 
+# Windows variant of the ancestry layer: MSYS `ps` has no POSIX -o forms, so
+# feed the session-lock library's verified win32 walker into the same matcher
+# and name rules the POSIX walk applies.
+detect_own_win32() {
+  if [ "$(type -t fm_harness_win32_walk)" != function ]; then
+    # shellcheck source=bin/fm-session-lock-lib.sh
+    . "$SCRIPT_DIR/fm-session-lock-lib.sh"
+  fi
+  local walk pid comm args base name
+  walk=$(fm_harness_win32_walk) || { echo unknown; return; }
+  while IFS=$'\t' read -r pid comm args; do
+    [ -n "${pid:-}" ] || continue
+    fm_harness_process_matches "$comm" "$args" || continue
+    base=$(basename -- "$comm")
+    case "$base" in
+      *claude*) echo claude; return ;;
+      *codex*) echo codex; return ;;
+      *opencode*) echo opencode; return ;;
+      *grok*) echo grok; return ;;
+      kimi) echo kimi; return ;;
+      pi-signed) echo pi; return ;;
+      pi) echo pi; return ;;
+    esac
+    if name=$(fm_harness_path_name "$comm") ||
+      name=$(fm_harness_path_name "${args%% *}"); then
+      case "$name" in
+        claude|codex|opencode|grok|kimi|pi) echo "$name"; return ;;
+      esac
+    fi
+    case "$comm" in
+      *node*|*python*)
+        case "$(printf '%s' "$args" | tr '[:upper:]' '[:lower:]')" in
+          *claude*) echo claude; return ;;
+          *codex*) echo codex; return ;;
+          *opencode*) echo opencode; return ;;
+          *grok*) echo grok; return ;;
+        esac ;;
+    esac
+  done <<EOF2
+$walk
+EOF2
+  echo unknown
+}
+
 detect_own() {
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+      detect_own_win32
+      return
+      ;;
+  esac
   # Layer 1: environment markers for verified harnesses.
   # Keep marker detection before ancestry detection as an explicit precedence rule.
   # Claude, Pi, Grok, and Cursor set verified markers of their own; codex,

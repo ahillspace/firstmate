@@ -4,7 +4,8 @@
 # Downloads the official GitHub release archive for the host OS/arch, verifies
 # its per-archive SHA-256 pin, and installs the binary into the destination
 # directory. Supported platforms: linux amd64/x86_64, linux arm64/aarch64,
-# darwin amd64/x86_64, darwin arm64/aarch64. Pins come from the official
+# darwin amd64/x86_64, darwin arm64/aarch64, windows amd64/x86_64 under Git
+# Bash (MINGW64). Pins come from the official
 # ShellCheck release asset digests. Verification uses sha256sum when present,
 # otherwise shasum -a 256. An unsupported OS/arch or a missing pin fails
 # without downloading.
@@ -44,6 +45,12 @@ case "${os}-${arch}" in
     ARCHIVE="shellcheck-v${VERSION}.darwin.aarch64.tar.xz"
     SHA256=56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79
     ;;
+  MINGW64_NT-*-x86_64)
+    # SHA-256 pin is the GitHub release asset digest for the shellcheck
+    # v0.11.0 Windows zip archive.
+    ARCHIVE="shellcheck-v${VERSION}.zip"
+    SHA256=8a4e35ab0b331c85d73567b12f2a444df187f483e5079ceffa6bda1faa2e740e
+    ;;
   *)
     die "unsupported platform ${os}-${arch}; need linux or darwin on amd64/x86_64 or arm64/aarch64"
     ;;
@@ -78,7 +85,25 @@ fi
     "$ARCHIVE" "$SHA256" "$ACTUAL_SHA256" >&2
   exit 1
 }
-tar -xJf "$TMP/$ARCHIVE" -C "$TMP"
+case "${ARCHIVE}" in
+  *.zip)
+    # Git Bash has no unzip; extract the Windows zip through PowerShell,
+    # passing Windows paths by environment so no quoting survives the hop.
+    # shellcheck disable=SC2016 # PowerShell command must not be expanded by bash
+    FM_ZIP_SRC=$(cygpath -w "$TMP/$ARCHIVE") \
+    FM_ZIP_DST="$TMP/x" \
+      powershell.exe -NoProfile -NonInteractive -Command \
+      'Expand-Archive -LiteralPath $env:FM_ZIP_SRC -DestinationPath $env:FM_ZIP_DST -Force'
+    BIN="$TMP/x/shellcheck.exe"
+    ;;
+  *)
+    tar -xJf "$TMP/$ARCHIVE" -C "$TMP"
+    BIN="$TMP/shellcheck-v${VERSION}/shellcheck"
+    ;;
+esac
 mkdir -p "$DESTINATION"
-install -m 0755 "$TMP/shellcheck-v${VERSION}/shellcheck" "$DESTINATION/shellcheck"
+case "$BIN" in
+  *.exe) install -m 0755 "$BIN" "$DESTINATION/shellcheck.exe" ;;
+  *) install -m 0755 "$BIN" "$DESTINATION/shellcheck" ;;
+esac
 "$DESTINATION/shellcheck" --version

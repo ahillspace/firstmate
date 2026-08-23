@@ -4,7 +4,8 @@
 # Downloads the official GitHub release archive for the host OS/arch, verifies
 # its per-archive SHA-256 pin, and installs the binary into the destination
 # directory. Supported platforms: linux amd64/x86_64, linux arm64/aarch64,
-# darwin amd64/x86_64, darwin arm64/aarch64. Pins come from the official
+# darwin amd64/x86_64, darwin arm64/aarch64, windows amd64/x86_64 under Git
+# Bash (MINGW64). Pins come from the official
 # actionlint release checksums file. Verification uses sha256sum when present,
 # otherwise shasum -a 256. An unsupported OS/arch or a missing pin fails
 # without downloading.
@@ -44,6 +45,12 @@ case "${os}-${arch}" in
     ARCHIVE="actionlint_${VERSION}_darwin_arm64.tar.gz"
     SHA256=aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f
     ;;
+  MINGW64_NT-*-x86_64)
+    # SHA-256 pin is the actionlint_${VERSION}_windows_amd64.zip digest from
+    # the official release checksums file.
+    ARCHIVE="actionlint_${VERSION}_windows_amd64.zip"
+    SHA256=6e7241b51e6817ea6a047693d8e6fed13b31819c9a0dd6c5a726e1592d22f6e9
+    ;;
   *)
     die "unsupported platform ${os}-${arch}; need linux or darwin on amd64/x86_64 or arm64/aarch64"
     ;;
@@ -78,7 +85,25 @@ fi
     "$ARCHIVE" "$SHA256" "$ACTUAL_SHA256" >&2
   exit 1
 }
-tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
+case "${ARCHIVE}" in
+  *.zip)
+    # Git Bash has no unzip; extract the Windows zip through PowerShell,
+    # passing Windows paths by environment so no quoting survives the hop.
+    # shellcheck disable=SC2016 # PowerShell command must not be expanded by bash
+    FM_ZIP_SRC=$(cygpath -w "$TMP/$ARCHIVE") \
+    FM_ZIP_DST="$TMP/x" \
+      powershell.exe -NoProfile -NonInteractive -Command \
+      'Expand-Archive -LiteralPath $env:FM_ZIP_SRC -DestinationPath $env:FM_ZIP_DST -Force'
+    BIN="$TMP/x/actionlint.exe"
+    ;;
+  *)
+    tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
+    BIN="$TMP/actionlint"
+    ;;
+esac
 mkdir -p "$DESTINATION"
-install -m 0755 "$TMP/actionlint" "$DESTINATION/actionlint"
+case "$BIN" in
+  *.exe) install -m 0755 "$BIN" "$DESTINATION/actionlint.exe" ;;
+  *) install -m 0755 "$BIN" "$DESTINATION/actionlint" ;;
+esac
 "$DESTINATION/actionlint" -version
