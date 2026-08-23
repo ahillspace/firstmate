@@ -144,3 +144,12 @@
 - Validation: `bash tests/fm-supervision-instructions.test.sh` passed, including MSYS OpenCode detection.
 - Validation blocked: `bash bin/fm-lint.sh` stopped before analysis because ShellCheck 0.11.0 is unavailable on `PATH`.
 - `WINDOWS-SUPPORT-REPORT.md` is present, but `WINDOWS-SUPPORT-PR.txt` remains absent because PR creation is deferred until lint passes.
+
+## 2026-08-23 iteration 50
+
+- Session-start reconciliation completed successfully with no active fleet tasks.
+- Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
+- Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
+- Validation: `bash tests/fm-supervision-instructions.test.sh` passed, including MSYS OpenCode detection.
+- Validation blocked: `bash bin/fm-lint.sh` stopped before analysis because ShellCheck 0.11.0 is unavailable on `PATH`.
+- `WINDOWS-SUPPORT-PR.txt` remains absent, so the stop condition is not met.
