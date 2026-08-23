@@ -31,7 +31,8 @@
     "docs/zellij-backend.md",
     "docs/orca-backend.md",
     "docs/cmux-backend.md",
-    "docs/remote-secondmates.md"
+    "docs/remote-secondmates.md",
+    "docs/windows.md"
   ],
   "requiredOwnerPointers": [
     {
@@ -390,6 +391,10 @@
     },
     {
       "path": "docs/wedge-alarm.md",
+      "audience": "operator-current"
+    },
+    {
+      "path": "docs/windows.md",
       "audience": "operator-current"
     },
     {

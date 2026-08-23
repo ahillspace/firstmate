@@ -17,3 +17,10 @@
 - Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
 - Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
 - Validation: `bash -n tests/fm-opencode-plugins.test.sh` and `git diff --check` passed.
+
+- Added `docs/windows.md` with Git Bash installation, `jq` via winget, the official treehouse release zip and running-session `PATH` caveat, Herdr selection, and known Windows limits.
+- Linked the Windows guide from the README Documentation table and registered it as an `operator-current` setup surface.
+- Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
+- Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
+- Validation: `node` parsed `docs/documentation-audiences.json` and confirmed the Windows setup target and surface classification.
+- Validation blocked: `bin/fm-doc-audience-check.sh` requires unavailable Python 3, and `bash bin/fm-lint.sh` requires unavailable ShellCheck 0.11.0.
