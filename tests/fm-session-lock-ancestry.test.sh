@@ -45,10 +45,19 @@ lib_eval() {  # <fakebin> <expression>
   " "$LIB"
 }
 
+# Pin the ancestry backend a fixture exercises: the dispatcher branches on
+# uname -s, and these POSIX-ps fixtures must stay on the posix backend even
+# when the suite runs on an MSYS host (and vice versa for the win32 fixture).
+pin_backend() {  # <fakebin> <uname-string>
+  printf '#!/usr/bin/env sh\nprintf %%s "%s"\n' "$2" > "$1/uname"
+  chmod +x "$1/uname"
+}
+
 test_version_named_session_is_identified_on_both_platforms() {
   local dir fakebin shape got
   dir="$TMP_ROOT/version-named"
   fakebin=$(fm_fakebin "$dir")
+  pin_backend "$fakebin" Linux
   mkdir -p "$dir/state"
   cat > "$fakebin/ps" <<'SH'
 #!/usr/bin/env bash
@@ -91,6 +100,7 @@ test_ordinary_paths_are_never_harness_processes() {
   local dir fakebin shape
   dir="$TMP_ROOT/ordinary-paths"
   fakebin=$(fm_fakebin "$dir")
+  pin_backend "$fakebin" Linux
   mkdir -p "$dir/state"
   cat > "$fakebin/ps" <<'SH'
 #!/usr/bin/env bash
@@ -138,6 +148,7 @@ test_harness_beyond_a_gap_never_owns_the_lock() {
   local dir fakebin got
   dir="$TMP_ROOT/gap"
   fakebin=$(fm_fakebin "$dir")
+  pin_backend "$fakebin" Linux
   mkdir -p "$dir/state"
   cat > "$fakebin/ps" <<'SH'
 #!/usr/bin/env bash
@@ -183,6 +194,7 @@ test_competing_version_named_session_is_seen_as_live() {
   local dir fakebin
   dir="$TMP_ROOT/competing"
   fakebin=$(fm_fakebin "$dir")
+  pin_backend "$fakebin" Linux
   mkdir -p "$dir/state"
   cat > "$fakebin/ps" <<'SH'
 #!/usr/bin/env bash
@@ -314,6 +326,12 @@ epoch_outcome() {
 }
 
 test_e2e_version_named_session_claims_the_home() {
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+      pass "POSIX process-tree fixture skipped on an MSYS host"
+      return
+      ;;
+  esac
   local dir
   dir="$TMP_ROOT/e2e-version-named"
   make_primary_home "$dir"
@@ -325,6 +343,12 @@ test_e2e_version_named_session_claims_the_home() {
 }
 
 test_e2e_daemon_parented_session_claims_the_home() {
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+      pass "POSIX process-tree fixture skipped on an MSYS host"
+      return
+      ;;
+  esac
   local dir session_pid daemon_pid lock_after
   dir="$TMP_ROOT/e2e-daemon-parented"
   make_primary_home "$dir"
@@ -341,6 +365,12 @@ test_e2e_daemon_parented_session_claims_the_home() {
 }
 
 test_e2e_daemon_parented_version_named_session_keeps_its_lock() {
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+      pass "POSIX process-tree fixture skipped on an MSYS host"
+      return
+      ;;
+  esac
   local dir session_pid daemon_pid lock_after
   dir="$TMP_ROOT/e2e-daemon-version-named"
   make_primary_home "$dir"
@@ -356,7 +386,69 @@ test_e2e_daemon_parented_version_named_session_keeps_its_lock() {
   pass "session-lock e2e: a version-named session under a harness-named daemon keeps its own lock"
 }
 
+test_win32_backend_identifies_an_opencode_session() {
+  local dir fakebin got
+  dir="$TMP_ROOT/win32-opencode"
+  fakebin=$(fm_fakebin "$dir")
+  pin_backend "$fakebin" MINGW64_NT-10.0-22631
+  mkdir -p "$dir/state"
+  # The production walker derives its starting pid inside PowerShell itself
+  # (parent of its own process); with neither env marker set the fake treats
+  # the call as that walk and owns the whole chain snapshot. A set FM_WINPID_ROW
+  # selects the single-row liveness lookup instead.
+  # Three modes: FM_WINPID_ROW set -> single TAB row for liveness; neither
+  # marker -> the walker's self-parent query (plain number); FM_WINPID_REC set
+  # -> one USV record (pid, parent, comm, args) for that hop.
+  cat > "$fakebin/powershell.exe" <<'SH'
+#!/usr/bin/env bash
+set -u
+row=${FM_WINPID_ROW:-}
+if [ -n "$row" ]; then
+  case "$row:$FM_TEST_WIN32_SHAPE" in
+    7100:*) printf '%s\n' "$(printf '7100\tnode.exe\tnode C:\\opencode-ai')" ;;
+    *) exit 1 ;;
+  esac
+  exit 0
+fi
+rec=${FM_WINPID_REC:-}
+if [ -n "$rec" ]; then
+  case "$rec:$FM_TEST_WIN32_SHAPE" in
+    7001:*) printf '%s\n' "$(printf '7001\0317100\031bash.exe\031bash /repo/bin/fm-session-start.sh')" ;;
+    7100:opencode) printf '%s\n' "$(printf '7100\0317200\031node.exe\031node C:\\Users\\u\\AppData\\Roaming\\npm\\node_modules\\opencode-ai\\dist\\index.js')" ;;
+    7100:noisy) printf '%s\n' "$(printf '7100\0316200\031node.exe\031node scripts/notify.js --quiet')" ;;
+    7200:opencode) printf '%s\n' "$(printf '7200\0316000\031cmd.exe\031cmd /c opencode')" ;;
+    6000:opencode) printf '%s\n' "$(printf '6000\0310\031WindowsTerminal.exe\031')" ;;
+    *) exit 1 ;;
+  esac
+  exit 0
+fi
+printf '%s\n' 7001
+exit 0
+SH
+  chmod +x "$fakebin/powershell.exe"
+
+  # The shape variable rides INSIDE the evaluated expression: an env prefix on
+  # a pure got=$(lib_eval ...) assignment does not reach the fixture.
+  got=$(lib_eval "$fakebin" 'FM_TEST_WIN32_SHAPE=opencode fm_harness_ancestry_pid') \
+    || fail "win32: the opencode session was not found in its ancestry at all"
+  [ "$got" = 7100 ] || fail "win32: ancestry resolved '$got', expected the node-hosted opencode session pid 7100"
+  lib_eval "$fakebin" 'FM_TEST_WIN32_SHAPE=opencode fm_harness_pid_alive 7100' \
+    || fail "win32: a live opencode session was not recognized as a harness"
+  if lib_eval "$fakebin" 'FM_TEST_WIN32_SHAPE=opencode fm_harness_pid_alive 999999'; then
+    fail "win32: an unknown pid passed harness liveness"
+  fi
+  printf '7100\n' > "$dir/state/.lock"
+  lib_eval "$fakebin" "FM_TEST_WIN32_SHAPE=opencode fm_session_lock_owned_by_self '$dir/state'" \
+    || fail "win32: the session holding the lock did not recognize itself as the owner"
+
+  if lib_eval "$fakebin" 'FM_TEST_WIN32_SHAPE=noisy fm_harness_ancestry_pid'; then
+    fail "win32: an ordinary node script was treated as a harness process"
+  fi
+  pass "session-lock win32: a node-hosted opencode session is identified through the CIM walk, ordinary node is not"
+}
+
 test_version_named_session_is_identified_on_both_platforms
+test_win32_backend_identifies_an_opencode_session
 test_ordinary_paths_are_never_harness_processes
 test_harness_beyond_a_gap_never_owns_the_lock
 test_competing_version_named_session_is_seen_as_live

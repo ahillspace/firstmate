@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { realpathSync } from "node:fs";
+import { realpathSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { encodeFirstmateOperationalInput } from "./lib/fm-operational-input.js";
 
@@ -7,11 +7,43 @@ const COORDINATOR_KEY = "__firstmateOpenCodeWatchArm";
 
 let skipNextIdle = false;
 
+// Windows cannot execute a .sh script directly, and Bun's spawn throws
+// synchronously (EFTYPE) instead of emitting an error event. Route .sh
+// guards through Git Bash when present and treat any spawn failure the same
+// as the existing missing-script allow path. FM_GIT_BASH overrides it.
+function windowsBashForScripts() {
+  if (process.platform !== "win32") return null;
+  const candidates = [
+    process.env.FM_GIT_BASH,
+    "C:\\Program Files\\Git\\bin\\bash.exe",
+    "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+    "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
+  ].filter(Boolean);
+  return candidates.find((path) => existsSync(path)) ?? null;
+}
+
 function runProcess(command, args, input = "") {
   return new Promise((resolve) => {
-    const child = spawn(command, args, {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+    let file = command;
+    let argv = [...args];
+    if (process.platform === "win32" && /\.sh$/i.test(command)) {
+      const bash = windowsBashForScripts();
+      if (!bash) {
+        resolve({ code: 0, stdout: "", stderr: "" });
+        return;
+      }
+      file = bash;
+      argv = [command.replace(/\\/g, "/"), ...argv];
+    }
+    let child;
+    try {
+      child = spawn(file, argv, {
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+    } catch {
+      resolve({ code: 0, stdout: "", stderr: "" });
+      return;
+    }
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => {

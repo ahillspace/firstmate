@@ -1,12 +1,44 @@
 import { spawn } from "node:child_process";
-import { realpathSync } from "node:fs";
+import { realpathSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const handledSessions = new Set();
 
+// Windows cannot execute a .sh script directly, and Bun's spawn throws
+// synchronously (EFTYPE) instead of emitting an error event. Route the .sh
+// nudge through Git Bash when present and treat any spawn failure the same
+// as the existing missing-script skip path. FM_GIT_BASH overrides it.
+function windowsBashForScripts() {
+  if (process.platform !== "win32") return null;
+  const candidates = [
+    process.env.FM_GIT_BASH,
+    "C:\\Program Files\\Git\\bin\\bash.exe",
+    "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+    "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
+  ].filter(Boolean);
+  return candidates.find((path) => existsSync(path)) ?? null;
+}
+
 function runProcess(command, args) {
   return new Promise((resolveResult) => {
-    const child = spawn(command, args, { stdio: ["ignore", "pipe", "ignore"] });
+    let file = command;
+    let argv = [...args];
+    if (process.platform === "win32" && /\.sh$/i.test(command)) {
+      const bash = windowsBashForScripts();
+      if (!bash) {
+        resolveResult({ code: 0, stdout: "" });
+        return;
+      }
+      file = bash;
+      argv = [command.replace(/\\/g, "/"), ...argv];
+    }
+    let child;
+    try {
+      child = spawn(file, argv, { stdio: ["ignore", "pipe", "ignore"] });
+    } catch {
+      resolveResult({ code: 0, stdout: "" });
+      return;
+    }
     let stdout = "";
     child.stdout.on("data", (chunk) => {
       stdout += chunk.toString();

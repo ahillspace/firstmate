@@ -49,10 +49,18 @@ function waitForArmReady(armChild) {
 
 function runProcess(command, args, options = {}) {
   return new Promise((resolve) => {
-    const proc = spawn(command, args, {
-      stdio: ["ignore", "pipe", "pipe"],
-      ...options,
-    });
+    let proc;
+    try {
+      proc = spawn(command, args, {
+        stdio: ["ignore", "pipe", "pipe"],
+        ...options,
+      });
+    } catch (error) {
+      // Bun can throw synchronously from spawn (for example EFTYPE on
+      // Windows); resolve exactly like the async error path below.
+      resolve({ code: 127, stdout: "", stderr: String(error?.message ?? error) });
+      return;
+    }
     let stdout = "";
     let stderr = "";
     proc.stdout.on("data", (chunk) => {

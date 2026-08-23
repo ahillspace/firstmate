@@ -352,6 +352,21 @@ fm_lock_points_to_owner() {
   [ "$actual" = "$ownerdir" ]
 }
 
+# Shape-agnostic "is lockdir verifiably the one this process created?" check:
+# symlink identity on POSIX hosts, matching pid payload on MSYS plain-dir locks
+# where readlink has no meaning.
+fm_lock_owned_here() {  # <lockdir> <ownerdir>
+  if [ -L "$1" ]; then
+    fm_lock_points_to_owner "$@"
+    return
+  fi
+  fm_lock_on_msys || return 1
+  local mine theirs
+  mine=$(cat "$1/pid" 2>/dev/null || true)
+  theirs=$(cat "$2/pid" 2>/dev/null || true)
+  [ -n "$mine" ] && [ "$mine" = "$theirs" ]
+}
+
 fm_lock_discard_owner() {
   local ownerdir=$1
   [ -n "$ownerdir" ] || return 0
@@ -403,6 +418,15 @@ fm_lock_claim() {
   return 0
 }
 
+# True on MSYS-family Git Bash hosts, whose default ln -s has no symlink
+# privilege and either fails or silently degrades to a byte copy.
+fm_lock_on_msys() {
+  case "$(uname -s 2>/dev/null)" in
+    MINGW*|MSYS*|CYGWIN*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 fm_lock_try_create() {
   local lockdir=$1 allowed_steal_owner=${2:-} ownerdir
   FM_LOCK_OWNER_DIR=
@@ -412,6 +436,21 @@ fm_lock_try_create() {
     return 1
   fi
   if ! fm_lock_prepare_owner "$ownerdir"; then
+    fm_lock_discard_owner "$ownerdir"
+    return 1
+  fi
+  if fm_lock_on_msys; then
+    # The lock lives as one atomic mkdir'd directory carrying the pid payload;
+    # release and staleness already treat plain-dir locks as first-class. The
+    # owner scratch dir stays registered in FM_LOCK_OWNER_DIR so the steal
+    # path can verify ownership via matching payloads, and release discards it.
+    if mkdir "$lockdir" 2>/dev/null \
+       && fm_lock_prepare_owner "$lockdir" \
+       && ! fm_lock_claim_blocked_by_steal "$lockdir" "$allowed_steal_owner"; then
+      FM_LOCK_OWNER_DIR=$ownerdir
+      return 0
+    fi
+    rm -rf "$lockdir" 2>/dev/null || true
     fm_lock_discard_owner "$ownerdir"
     return 1
   fi
@@ -841,7 +880,7 @@ fm_lock_try_acquire() {
     FM_LOCK_OWNER_DIR=
     return 1
   fi
-  if ! fm_lock_points_to_owner "$steal" "$steal_owner"; then
+  if ! fm_lock_owned_here "$steal" "$steal_owner"; then
     fm_lock_release "$steal"
     FM_LOCK_HELD_PID=$(cat "$lockdir/pid" 2>/dev/null || true)
     FM_LOCK_OWNER_DIR=
@@ -907,6 +946,9 @@ fm_lock_release() {
   [ "$pid" = "$current" ] || return 0
   fm_lock_clean_known_files "$lockdir"
   rmdir "$lockdir" 2>/dev/null || true
+  # MSYS plain-dir locks keep their owner scratch dir registered for the steal
+  # path; POSIX plain-dir users leave the variable empty, making this a no-op.
+  fm_lock_discard_owner "${FM_LOCK_OWNER_DIR:-}"
 }
 
 fm_meta_lock_path() {
