@@ -30,6 +30,20 @@ function positiveInteger(name, fallback) {
   return Math.floor(value);
 }
 
+// Windows cannot execute a .sh script directly. Use the same Git Bash
+// discovery contract as the sibling OpenCode plugins, with FM_GIT_BASH as the
+// operator override.
+function windowsBashForScripts() {
+  if (process.platform !== "win32") return null;
+  const candidates = [
+    process.env.FM_GIT_BASH,
+    "C:\\Program Files\\Git\\bin\\bash.exe",
+    "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+    "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
+  ].filter(Boolean);
+  return candidates.find((path) => existsSync(path)) ?? null;
+}
+
 function setArmStatus(status) {
   armStatus = status;
 }
@@ -203,9 +217,16 @@ async function sendPrompt(paths, client, sessionID, text) {
 }
 
 function confirmHandlingDelivery(paths, recovery) {
+  const bash = windowsBashForScripts();
+  if (process.platform === "win32" && !bash) {
+    return {
+      ok: false,
+      detail: "watcher: FAILED - handling delivery confirmation could not be executed because Git Bash was not found",
+    };
+  }
   try {
     const result = spawnSync(
-      "bash",
+      bash ?? "bash",
       [`${paths.root}/bin/fm-watch-arm.sh`, "--handling-delivered", recovery.generation, "--watcher-pid", recovery.watcherPid],
       {
         cwd: paths.root,
@@ -342,6 +363,8 @@ async function scheduleRetry(paths, sessionID, client, reason, predecessorArmPid
 }
 
 function spawnArm(paths, sessionID, client, predecessorArmPid = "") {
+  const bash = windowsBashForScripts();
+  if (process.platform === "win32" && !bash) return null;
   setArmStatus("starting");
   const env = {
     ...process.env,
@@ -350,7 +373,7 @@ function spawnArm(paths, sessionID, client, predecessorArmPid = "") {
     FM_CONFIG_OVERRIDE: paths.config,
     FM_WATCH_PREDECESSOR_ARM_PID: predecessorArmPid,
   };
-  const armChild = spawn("bash", ["-lc", 'config_dir="${FM_CONFIG_OVERRIDE:-$FM_HOME/config}"; [ -f "$config_dir/x-mode.env" ] && . "$config_dir/x-mode.env"; exec "$FM_ROOT_OVERRIDE/bin/fm-watch-arm.sh" --restart'], {
+  const armChild = spawn(bash ?? "bash", ["-lc", 'config_dir="${FM_CONFIG_OVERRIDE:-$FM_HOME/config}"; [ -f "$config_dir/x-mode.env" ] && . "$config_dir/x-mode.env"; exec "$FM_ROOT_OVERRIDE/bin/fm-watch-arm.sh" --restart'], {
     cwd: paths.root,
     env,
     stdio: ["ignore", "pipe", "pipe"],
@@ -458,7 +481,8 @@ async function beginArm(paths, sessionID, client, predecessorArmPid) {
   if (child) return { status: "existing", armChild: child };
   if (retryTimer) return { status: "retrying", armChild: null };
   if (!shouldArm(paths)) return { status: "not-needed", armChild: null };
-  return { status: "spawned", armChild: spawnArm(paths, sessionID, client, predecessorArmPid) };
+  const armChild = spawnArm(paths, sessionID, client, predecessorArmPid);
+  return armChild ? { status: "spawned", armChild } : { status: "failed", armChild: null };
 }
 
 function armAttempt(status, armChild, includeArmChild) {
