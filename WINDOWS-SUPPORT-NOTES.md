@@ -34,3 +34,11 @@
 - Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
 - Validation: `bash tests/fm-supervision-instructions.test.sh` passed.
 - Validation blocked: `bash bin/fm-lint.sh` stopped because ShellCheck 0.11.0 is unavailable on `PATH`.
+
+## 2026-08-23 iteration 10
+
+- Revalidated the Windows-support focused suites after the prior delivery checkpoint.
+- Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed.
+- Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
+- Validation blocked: `bash bin/fm-lint.sh` stopped before linting because ShellCheck 0.11.0 is unavailable.
+- `winget` reports no installed ShellCheck package, and the repository installer does not support the Windows host.
