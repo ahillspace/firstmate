@@ -29,3 +29,8 @@
 - Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
 - Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
 - Validation: `git diff --check` passed.
+- Iteration 6 recorded the delivery report and reran the focused Windows-support suites.
+- Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
+- Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
+- Validation: `bash tests/fm-supervision-instructions.test.sh` passed.
+- Validation blocked: `bash bin/fm-lint.sh` stopped because ShellCheck 0.11.0 is unavailable on `PATH`.
