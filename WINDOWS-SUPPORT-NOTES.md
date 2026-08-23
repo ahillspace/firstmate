@@ -77,3 +77,12 @@
 - Validation: `bash tests/fm-supervision-instructions.test.sh` passed.
 - Validation blocked: `bash bin/fm-lint.sh` stopped before linting because ShellCheck 0.11.0 is unavailable on `PATH`.
 - `WINDOWS-SUPPORT-PR.txt` remains absent, so PR creation remains deferred until the lint gate passes.
+
+## 2026-08-23 iteration 29
+
+- Revalidated the Windows-support delivery gates after a complete session-start reconciliation.
+- Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
+- Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
+- Validation: `bash tests/fm-supervision-instructions.test.sh` passed.
+- Validation blocked: `bash bin/fm-lint.sh` stopped because ShellCheck 0.11.0 is unavailable on `PATH`.
+- The branch remains clean and synchronized with `origin/windows-support`.
