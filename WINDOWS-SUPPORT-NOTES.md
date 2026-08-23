@@ -51,6 +51,15 @@
 - Validation: `bash tests/fm-supervision-instructions.test.sh` passed.
 - Validation blocked: `bash bin/fm-lint.sh` stopped because ShellCheck 0.11.0 is unavailable.
 
+## 2026-08-23 iteration 25
+
+- Revalidated the remaining Windows-support delivery gates without changing product files.
+- Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
+- Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
+- Validation: the required headings in `docs/windows.md` and its `README.md` Documentation table link are present.
+- Validation blocked: `bash bin/fm-lint.sh` stopped before linting because ShellCheck 0.11.0 is unavailable on `PATH`.
+- `WINDOWS-SUPPORT-REPORT.md` is present, but `WINDOWS-SUPPORT-PR.txt` remains absent because PR creation is deferred until the lint gate passes.
+
 ## 2026-08-23 iteration 21
 
 - Revalidated the Windows-support focused suites after session reconciliation timed out without producing a digest.
