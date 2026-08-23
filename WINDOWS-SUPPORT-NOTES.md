@@ -13,3 +13,7 @@
 - Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
 - Validation: `bash -n bin/fm-harness.sh tests/fm-supervision-instructions.test.sh` and `git diff --check` passed.
 - Validation: `bash bin/fm-lint.sh` is pending because ShellCheck 0.11.0 is not installed.
+- Added `tests/fm-opencode-plugins.test.sh` with native Windows coverage for OpenCode watcher-arm Git Bash routing.
+- Validation: `bash tests/fm-opencode-plugins.test.sh` passed.
+- Validation: `bash tests/fm-session-lock-ancestry.test.sh` passed with 8 ok lines.
+- Validation: `bash -n tests/fm-opencode-plugins.test.sh` and `git diff --check` passed.
